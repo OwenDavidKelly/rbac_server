@@ -1,0 +1,144 @@
+openapi: 3.0.3
+info:
+  title: Role Based Access Control Server
+  version: "1.0"
+servers:
+  - url: http://localhost:5000
+paths:
+  /authorise:
+    post:
+      summary: Authenticate the user
+      description: Authenticates the user and establishes a session
+      parameters:
+        - name: username
+          in: header
+          description: The users username
+          required: True
+          schema:
+            type: string
+        - name: password
+          in: header
+          description: The users password
+          required: True
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful Authorisation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  authenticated:
+                    type: boolean
+                    description: Authentication status
+        '401':
+          description: Invalid User Credentials
+          
+  /upload:
+    post:
+      summary: Upload a file
+      description: Uploads a file to the specified category
+      requestBody:
+        content:
+          multipart/form-data:
+           schema:
+            type: object
+            properties:
+              file:
+                type: string
+                format: base64
+                description: The file to be uploaded
+      parameters:
+        - name: category
+          in: header
+          schema:
+            type: string
+          description: The category to be uploaded to
+          required: True
+      responses:
+        '200':
+          description: Successful Upload
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  completed:
+                    type: boolean
+                    description: Completion status
+        '400':
+          description: Request incomplete or contains invalid data
+        '401':
+          description: User not authenticated
+        '403':
+          description: User authenticated but not authorised
+          
+  /get_all:
+    get:
+      summary: Gets a list of all accessible files
+      description: Gets a list of all accessible files in the category
+      parameters:
+        - name: category
+          in: header
+          schema:
+            type: string
+          description: The category to retrieve
+          required: True
+      responses:
+        '200':
+          description: List of accessible files
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  completed:
+                    type: boolean
+                    description: Completion status
+                  file_list:
+                    type: array
+                    description: List of files
+                    items:
+                      schema:
+                        type: string
+                        description: File name
+        '400':
+          description: Request incomplete or contains invalid data
+        '401':
+          description: User not authenticated
+        '403':
+          description: User authenticated but not authorised
+  /get:
+    get:
+      summary: Gets the file specified
+      description: Gets the file specified in the category specified
+      parameters:
+        - name: category
+          in: header
+          schema:
+            type: string
+          description: The category to retrieve
+          required: True
+        - name: file
+          in: header
+          schema:
+            type: string
+          description: The file to retrieve
+          required: True
+      responses:
+        '200':
+          description: List of accessible files
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+                description: The file requested
+        '400':
+          description: Request incomplete or contains invalid data
+        '401':
+          description: User not authenticated
+        '403':
+          description: User authenticated but not authorised

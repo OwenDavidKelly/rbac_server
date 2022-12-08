@@ -1,0 +1,131 @@
+version: '3'
+services:
+  mfsmaster:
+    build: ./moosefs-master
+    container_name: "mfsmaster"
+    networks:
+      moosefsnet:
+        ipv4_address: "172.20.0.2"
+    volumes:
+            - ./data/master/meta:/var/lib/mfs
+    hostname: mfsmaster
+    environment:
+      - MFS_ENV=TEST 
+
+  mfschunkserver1:
+    build: ./moosefs-chunkserver
+    container_name: "mfschunkserver1"
+    environment:
+      - LABELS=M
+    links:
+      - mfsmaster
+    networks:
+      moosefsnet:
+        ipv4_address: "172.20.0.11"
+    volumes:
+            - ./data/cs1/hdd0:/mnt/hdd0
+            - ./data/cs1/meta:/var/lib/mfs
+    depends_on:
+      - mfsmaster
+  mfschunkserver2:
+    build: ./moosefs-chunkserver
+    container_name: "mfschunkserver2"
+    environment:
+      - LABELS=M,B
+    links:
+      - mfsmaster
+    networks:
+      moosefsnet:
+        ipv4_address: "172.20.0.12"
+    volumes:
+            - ./data/cs2/hdd0:/mnt/hdd0
+            - ./data/cs2/meta:/var/lib/mfs
+    depends_on:
+      - mfsmaster
+  mfschunkserver3:
+    build: ./moosefs-chunkserver
+    container_name: "mfschunkserver3"
+    environment:
+      - LABELS=M,B
+    links:
+      - mfsmaster
+    networks:
+      moosefsnet:
+        ipv4_address: "172.20.0.13"
+    volumes:
+            - ./data/cs3/hdd0:/mnt/hdd0
+            - ./data/cs3/meta:/var/lib/mfs
+    depends_on:
+      - mfsmaster
+  mfschunkserver4:
+    build: ./moosefs-chunkserver
+    container_name: "mfschunkserver4"
+    environment:
+      - LABELS=B
+    links:
+      - mfsmaster
+    networks:
+      moosefsnet:
+        ipv4_address: "172.20.0.14"
+    volumes:
+            - ./data/cs4/hdd0:/mnt/hdd0
+            - ./data/cs4/meta:/var/lib/mfs
+    depends_on:
+      - mfsmaster
+
+  rbac-server:
+    build: ./rbac-server
+    container_name: "rbac-server"
+    cap_add:
+      - SYS_ADMIN
+    devices:
+      - /dev/fuse:/dev/fuse
+    security_opt:
+      - apparmor:unconfined
+    stdin_open: true
+    tty: true
+    links:
+      - mfsmaster
+    ports:
+      - "5000:5000"
+    networks:
+      moosefsnet:
+        ipv4_address: "172.20.0.100"
+    depends_on:
+      - mfsmaster
+      - mfschunkserver1
+      - mfschunkserver2
+      - mfschunkserver3
+      - mfschunkserver4
+      - db
+    environment:
+      DB_HOST: 172.20.0.101
+      DB_USER: user
+      DB_PASSWORD: secret
+      DB_NAME: rbac
+      STORE_FOLDER: /mnt/moosefs
+
+  db:
+    container_name: rbac-db
+    image: mysql:8.0
+    command: --default-authentication-plugin=mysql_native_password
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: always
+    ports:
+      - "3307:3306"
+    networks:
+      moosefsnet:
+        ipv4_address: "172.20.0.101"
+    environment:
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_DATABASE: rbac
+      MYSQL_USER: user
+      MYSQL_PASSWORD: secret
+
+networks:
+  moosefsnet:
+    driver: bridge
+    ipam:
+     config:
+       - subnet: 172.20.0.0/16
